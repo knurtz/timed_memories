@@ -1,0 +1,18 @@
+{
+  "_meta": { "name": "Nederlands" },
+  "screen": {
+    "no_date": "Kies een referentiedatum"
+  },
+  "app": {
+    "name": "Timed Memories",
+    "summary": "Toont een camera- of afbeeldingse entity in volledig scherm met een bijschrift: hoe lang de foto is genomen ten opzichte van een referentiedatum.",
+    "saver_name": "Timed Memories",
+    "saver_example": "Foto van 5 maanden, 3 dagen geleden",
+    "reference_date": "Referentiedatum",
+    "reference_date_hint": "De datum waar de leeftijd van wordt berekend, als jaar-maand-dag, bijv. 2025-06-15.",
+    "show_button": "Toon knop",
+    "show_button_hint": "Een ronde knop in de hoek die een actie uitvoert zonder het scherm te wekken.",
+    "button_service": "Knop actie",
+    "button_service_hint": "De Home Assistant service die wordt aangeroepen bij een tik, bijv. image.reload."
+  }
+}

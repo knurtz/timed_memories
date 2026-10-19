@@ -1,0 +1,18 @@
+{
+  "_meta": { "name": "Deutsch" },
+  "screen": {
+    "no_date": "Referenzdatum wählen"
+  },
+  "app": {
+    "name": "Timed Memories",
+    "summary": "Zeigt eine Kamera- oder Bildentität in Vollbild mit einem Untertitel: wie lange das Foto aufgenommen wurde relativ zu einem Referenzdatum.",
+    "saver_name": "Timed Memories",
+    "saver_example": "Foto von vor 5 Monaten, 3 Tagen",
+    "reference_date": "Referenzdatum",
+    "reference_date_hint": "Das Datum, von dem aus das Alter berechnet wird, als Jahr-Monat-Tag, z. B. 2025-06-15.",
+    "show_button": "Knopf anzeigen",
+    "show_button_hint": "Ein runder Knopf in der Ecke, der eine Aktion auslöst, ohne den Bildschirm zu wecken.",
+    "button_service": "Knopf-Aktion",
+    "button_service_hint": "Der Home Assistant-Service, der bei einem Tipp aufgerufen wird, z. B. image.reload."
+  }
+}

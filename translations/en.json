@@ -1,0 +1,18 @@
+{
+  "_meta": { "name": "English" },
+  "screen": {
+    "no_date": "Choose a reference date"
+  },
+  "app": {
+    "name": "Timed Memories",
+    "summary": "Shows a photo full-screen with a caption: how long ago it was taken relative to a reference date.",
+    "saver_name": "Timed Memories",
+    "saver_example": "Photo from 5 months, 3 days ago",
+    "reference_date": "Reference date",
+    "reference_date_hint": "The date the age is calculated from, as year-month-day, e.g. 2025-06-15.",
+    "show_button": "Show button",
+    "show_button_hint": "A round button in the corner that triggers an action without waking the screen.",
+    "button_service": "Button action",
+    "button_service_hint": "The Home Assistant service to call when the button is tapped, e.g. image.reload."
+  }
+}

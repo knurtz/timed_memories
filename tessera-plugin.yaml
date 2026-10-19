@@ -1,0 +1,47 @@
+# Timed Memories: a screensaver step of its own (plugin API 0.14). Shows a camera or image entity's
+# snapshot full-screen with a caption computed from its taken_at attribute relative to a reference date.
+# One optional tap button for an action (e.g. shuffle to next image).
+id: timed_memories
+version: 0.1.0
+api: "0.14"
+icon: camera
+maintainer: your-github-name
+license: MIT
+stage: beta
+topics: [photos]
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 4
+
+permissions:
+  home_assistant_actions:
+    - image.reload
+
+savers:
+  - id: snap
+    name: saver_name
+    icon: camera
+    step: own
+    memory: 800
+    pictures: 1
+    taps: true
+    domains: [image, camera]
+    attributes: [entity_picture, taken_at]
+    when: always
+    example: saver_example
+    options:
+      - id: reference_date
+        kind: text
+        label: reference_date
+        hint: reference_date_hint
+      - id: show_button
+        kind: toggle
+        label: show_button
+        hint: show_button_hint
+        default: true
+      - id: button_service
+        kind: text
+        label: button_service
+        hint: button_service_hint
+        default: image.reload
