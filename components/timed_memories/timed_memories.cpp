@@ -41,62 +41,66 @@ static int days_in_month(int y, int m) {
   return dim[m - 1];
 }
 
-// Compute the difference in full months and remaining days between two dates.
-// Returns (months, days). If `before` is true, the taken date is before the reference.
-static void date_diff(const DateParts &ref, const DateParts &taken, int &months, int &days, bool &before) {
-  // Normalize to a serial-like comparison
-  int ry = ref.year, rm = ref.month, rd = ref.day;
-  int ty = taken.year, tm = taken.month, td = taken.day;
-
-  // Determine direction
-  if (ry < ty || (ry == ty && (rm < tm || (rm == tm && rd < td)))) {
-    before = false; // taken is after reference
-  } else {
-    before = true;  // taken is before (or equal to) reference
-  }
-
-  // Swap so we compute |ref - taken| with the later date as "end"
-  int ey, em, ed, sy, sm, sd;
-  if (before) {
-    // ref is later, taken is earlier
-    ey = ry; em = rm; ed = rd;
-    sy = ty; sm = tm; sd = td;
-  } else {
-    ey = ty; em = tm; ed = td;
-    sy = ry; sm = rm; sd = rd;
-  }
-
-  months = (ey - sy) * 12 + (em - sm);
-  int rem_days = ed - sd;
-  if (rem_days < 0) {
-    months--;
-    rem_days += days_in_month(ey - (em > 1 ? 1 : 0), em > 1 ? em - 1 : 12);
-  }
-  days = rem_days;
-  if (months < 0) months = 0;
+// Days since 1970-01-01 of a civil date (Howard Hinnant's days_from_civil, as the core uses beside
+// tessera::days_from_today), so two dates subtract to whole days, leap years included.
+static int32_t civil_days(int year, unsigned month, unsigned day) {
+  year -= month <= 2;
+  const int era = (year >= 0 ? year : year - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(year - era * 400);
+  const unsigned doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+  const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + static_cast<int32_t>(doe) - 719468;
 }
 
-// Format the caption: "5 Monate, 3 Tage" / "vor 5 Monate, 3 Tage" / "1 Monat, 1 Tag"
-static void format_caption(int months, int days, bool before, char *out, size_t out_len) {
-  std::string s;
-  if (before) s += "vor ";
-  if (months > 0) {
-    s += std::to_string(months);
-    s += months == 1 ? " Monat, " : " Monate, ";
+static int32_t serial(const DateParts &d) { return civil_days(d.year, d.month, d.day); }
+
+// `months` whole months after the date, its day clamped to the end of a shorter month (Jan 31 plus one
+// month is Feb 28). months is 0 or more.
+static DateParts add_months(const DateParts &d, int months) {
+  const int total = d.month - 1 + months;
+  int y = d.year + total / 12;
+  int m = total % 12;
+  if (m < 0) { y--; m += 12; }
+  DateParts out;
+  out.year = y;
+  out.month = m + 1;
+  const int last = days_in_month(y, m + 1);
+  out.day = d.day < last ? d.day : last;
+  return out;
+}
+
+// The whole months and the days that follow, from the earlier date to the later one.
+static void date_diff(const DateParts &earlier, const DateParts &later, int &months, int &days) {
+  months = 0;
+  for (;;) {
+    if (serial(add_months(earlier, months + 1)) > serial(later)) break;
+    months++;
   }
-  s += std::to_string(days);
-  s += days == 1 ? " Tag" : " Tage";
-  std::snprintf(out, out_len, "%s", s.c_str());
+  days = (int) (serial(later) - serial(add_months(earlier, months)));
+}
+
+// The caption from the screen's words (translations/<lang>.json, part "screen"): a plain age in months and
+// days, both parts always ("0 months, 0 days" for none). "" when the screen has no word for it.
+static std::string caption(const tessera::Plugin *plugin, int months, int days) {
+  const char *key = months == 1 ? (days == 1 ? "month_day" : "month_days")
+                                : (days == 1 ? "months_day" : "months_days");
+  std::string text(plugin->text(key));
+  if (text.empty()) return "";
+  if (months != 1) text = tessera::fill(text.c_str(), "months", std::to_string(months));
+  if (days != 1) text = tessera::fill(text.c_str(), "days", std::to_string(days));
+  return text;
 }
 
 class SnapSaver : public tessera::Saver {
  public:
+  explicit SnapSaver(const tessera::Plugin *plugin) : plugin_(plugin) {}
+
   void show(const tessera::SaverContext &c) override {
     // Store options
     height_ = c.height;
     std::snprintf(ref_date_, sizeof(ref_date_), "%s", c.options["reference_date"] | "2025-01-01");
     show_button_ = c.options["show_button"] | true;
-    std::snprintf(button_service_, sizeof(button_service_), "%s", c.options["button_service"] | "image.reload");
+    std::snprintf(button_action_, sizeof(button_action_), "%s", c.options["button_action"] | "");
 
     // Full-screen picture
     if (ui::pictures()) {
@@ -112,21 +116,8 @@ class SnapSaver : public tessera::Saver {
     caption_ = ui::label(shade_, Font::BODY, theme::INK);
     lv_obj_set_width(caption_, 1);
 
-    // Optional tap button: bottom-right, round, takes taps
-    if (show_button_) {
-      const int key = ui::mm(12);
-      btn_ = ui::block(c.parent, theme::RAISED);
-      lv_obj_set_style_radius(btn_, LV_RADIUS_CIRCLE, 0);
-      lv_obj_set_size(btn_, key, key);
-      lv_obj_set_pos(btn_, c.width - key - ui::mm(6), c.height - key - ui::mm(6));
-      // Icon: a simple refresh/shuffle symbol from Tessera's set
-      lv_obj_t *icon = ui::label(btn_, Font::ICON, theme::INK);
-      lv_obj_set_width(icon, key);
-      lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, 0);
-      lv_obj_set_pos(icon, 0, (key - ui::line_height(Font::ICON)) / 2);
-      ui::set_text(icon, ui::icon(0xF021B));  // refresh icon
-      ui::takes_taps(btn_);
-    }
+    // The tap button: bottom-right, round, takes taps; only when an action is named.
+    if (show_button_ && button_action_[0]) make_button(c.parent, c.width, c.height);
   }
 
   void on_state(JsonObjectConst data) override {
@@ -139,33 +130,21 @@ class SnapSaver : public tessera::Saver {
       if (pic_) ui::set_picture(pic_, attrs["entity_picture"], tessera::Fit::COVER);
     }
 
-    // Compute caption from taken_at
-    // An attribute whose name ends in _at and holds a moment comes as seconds since 1970.
-    long taken_epoch = attrs ? (long) (attrs["taken_at"] | 0) : 0;
-    if (taken_epoch > 0) {
-      auto t = tessera::local_time((uint32_t) taken_epoch);
-      DateParts taken{t.year, t.month, t.day, t.hour, t.minute};
-      DateParts ref;
-      if (parse_date(ref_date_, ref)) {
-        int months, days;
-        bool before;
-        date_diff(ref, taken, months, days, before);
-        char caption[64];
-        format_caption(months, days, before, caption, sizeof(caption));
-        ui::set_text(caption_, caption);
-        // Size the shade to fit the text
-        int tw = ui::text_width(caption, Font::BODY) + 2 * ui::mm(2);
-        int th = ui::line_height(Font::BODY) + 2 * ui::mm(1);
-        lv_obj_set_size(shade_, tw, th);
-        lv_obj_set_pos(shade_, ui::mm(6), height_ - th - ui::mm(6));
-        lv_obj_set_width(caption_, tw - 2 * ui::mm(2));
-        lv_obj_set_pos(caption_, ui::mm(2), ui::mm(1));
-        lv_obj_remove_flag(shade_, LV_OBJ_FLAG_HIDDEN);
-        return;
-      }
+    // The caption: how long ago (or ahead) the photo was taken, from the reference date, in the screen's words.
+    const std::string text = caption_text(attrs);
+    if (text.empty()) {
+      lv_obj_add_flag(shade_, LV_OBJ_FLAG_HIDDEN);
+      return;
     }
-    // No caption available
-    lv_obj_add_flag(shade_, LV_OBJ_FLAG_HIDDEN);
+    ui::set_text(caption_, text);
+    // Size the shade to fit the text
+    int tw = ui::text_width(text, Font::BODY) + 2 * ui::mm(2);
+    int th = ui::line_height(Font::BODY) + 2 * ui::mm(1);
+    lv_obj_set_size(shade_, tw, th);
+    lv_obj_set_pos(shade_, ui::mm(6), height_ - th - ui::mm(6));
+    lv_obj_set_width(caption_, tw - 2 * ui::mm(2));
+    lv_obj_set_pos(caption_, ui::mm(2), ui::mm(1));
+    lv_obj_remove_flag(shade_, LV_OBJ_FLAG_HIDDEN);
   }
 
   void on_tap() override {
@@ -174,24 +153,69 @@ class SnapSaver : public tessera::Saver {
     lv_area_t a;
     lv_obj_get_coords(btn_, &a);
     const int slack = ui::px(6);
-    if (p.x >= a.x1 - slack && p.x <= a.x2 + slack && p.y >= a.y1 - slack && p.y <= a.y2 + slack) {
-      if (entity_[0]) {
-        tessera::action(button_service_, entity_);
-      }
-    }
+    if (p.x >= a.x1 - slack && p.x <= a.x2 + slack && p.y >= a.y1 - slack && p.y <= a.y2 + slack) tap_button();
   }
 
  private:
+  // What the button runs: a script or an automation by its entity id (the service that goes with the domain), or,
+  // without one, a service as domain.action (such as image.reload) on the saver's own entity.
+  void tap_button() {
+    if (strncmp(button_action_, "script.", 7) == 0) {
+      tessera::action("script.turn_on", button_action_);
+    } else if (strncmp(button_action_, "automation.", 11) == 0) {
+      tessera::action("automation.trigger", button_action_);
+    } else if (strchr(button_action_, '.')) {
+      if (entity_[0]) tessera::action(button_action_, entity_);
+    }
+  }
+
+  // The caption to show, "" for none. The screen's own word while the photo has no taken moment, whose
+  // value of the attribute (a moment) comes as seconds since 1970.
+  std::string caption_text(JsonObjectConst attrs) {
+    long taken_epoch = attrs ? (long) (attrs["taken_at"] | 0) : 0;
+    DateParts ref;
+    if (!parse_date(ref_date_, ref)) return "";
+    if (!(taken_epoch > 0)) {
+      // A photo without a moment: the screen's word for it.
+      const char *word = plugin_->text("no_date");
+      return word && word[0] ? std::string(word) : std::string();
+    }
+    auto t = tessera::local_time((uint32_t) taken_epoch);
+    DateParts taken{t.year, t.month, t.day, t.hour, t.minute};
+    int months = 0, days = 0;
+    // The age, from the reference date to the photo, in whichever direction a wrong setting stands.
+    if (serial(ref) <= serial(taken)) date_diff(ref, taken, months, days);
+    else date_diff(taken, ref, months, days);
+    return caption(plugin_, months, days);
+  }
+
+  void make_button(lv_obj_t *parent, int width, int height) {
+    const int key = ui::mm(12);
+    btn_ = ui::block(parent, theme::RAISED);
+    lv_obj_set_style_radius(btn_, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_size(btn_, key, key);
+    lv_obj_set_pos(btn_, width - key - ui::mm(6), height - key - ui::mm(6));
+    // Icon: a simple refresh/shuffle symbol from Tessera's set
+    lv_obj_t *icon = ui::label(btn_, Font::ICON, theme::INK);
+    lv_obj_set_width(icon, key);
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(icon, 0, (key - ui::line_height(Font::ICON)) / 2);
+    ui::set_text(icon, ui::icon(0xF021B));  // refresh icon
+    ui::takes_taps(btn_);
+  }
+
+  const tessera::Plugin *plugin_;
   int height_ = 0;
   bool show_button_ = true;
   char ref_date_[32] = "2025-01-01";
-  char button_service_[64] = "image.reload";
+  char button_action_[64] = "";
   char entity_[128] = "";
   lv_obj_t *pic_{}, *caption_{}, *shade_{}, *btn_{};
 };
 
 void TimedMemories::setup() {
-  add_saver("snap", tessera::SaverStep::OWN, []() { return new SnapSaver(); });
+  // The component is the plugin, so the saver reaches its words (translations, part "screen") through it.
+  add_saver("snap", tessera::SaverStep::OWN, [this]() { return new SnapSaver(this); });
 }
 
 }  // namespace esphome::timed_memories

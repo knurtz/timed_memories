@@ -2,10 +2,10 @@
 # snapshot full-screen with a caption computed from its taken_at attribute relative to a reference date.
 # One optional tap button for an action (e.g. shuffle to next image).
 id: timed_memories
-version: 0.1.0
+version: 0.2.0
 api: "0.14"
 icon: camera
-maintainer: your-github-name
+maintainer: Knurtz
 license: MIT
 stage: beta
 topics: [photos]
@@ -16,6 +16,8 @@ flash_kb: 4
 
 permissions:
   home_assistant_actions:
+    - script.turn_on
+    - automation.trigger
     - image.reload
 
 savers:
@@ -40,8 +42,8 @@ savers:
         label: show_button
         hint: show_button_hint
         default: true
-      - id: button_service
+      - id: button_action
         kind: text
-        label: button_service
-        hint: button_service_hint
-        default: image.reload
+        label: button_action
+        hint: button_action_hint
+        default: ""

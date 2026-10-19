@@ -1,18 +1,22 @@
 {
   "_meta": { "name": "Deutsch" },
   "screen": {
-    "no_date": "Referenzdatum wählen"
+    "no_date": "Kein Aufnahmedatum",
+    "month_day": "1 Monat, 1 Tag",
+    "month_days": "1 Monat, {days} Tage",
+    "months_day": "{months} Monate, 1 Tag",
+    "months_days": "{months} Monate, {days} Tage"
   },
   "app": {
     "name": "Timed Memories",
-    "summary": "Zeigt eine Kamera- oder Bildentität in Vollbild mit einem Untertitel: wie lange das Foto aufgenommen wurde relativ zu einem Referenzdatum.",
+    "summary": "Zeigt eine Kamera- oder Bildentität in Vollbild mit ihrem Alter als Untertitel: die Monate und Tage von einem Referenzdatum bis zum Aufnahmetag.",
     "saver_name": "Timed Memories",
-    "saver_example": "Foto von vor 5 Monaten, 3 Tagen",
+    "saver_example": "5 Monate, 3 Tage",
     "reference_date": "Referenzdatum",
-    "reference_date_hint": "Das Datum, von dem aus das Alter berechnet wird, als Jahr-Monat-Tag, z. B. 2025-06-15.",
+    "reference_date_hint": "Das Datum, von dem aus das Alter gezählt wird, als Jahr-Monat-Tag, z. B. 2025-06-15. Ein Geburtstag funktioniert gut: Der Untertitel liest sich dann, wie alt die Person auf dem Foto ist.",
     "show_button": "Knopf anzeigen",
     "show_button_hint": "Ein runder Knopf in der Ecke, der eine Aktion auslöst, ohne den Bildschirm zu wecken.",
-    "button_service": "Knopf-Aktion",
-    "button_service_hint": "Der Home Assistant-Service, der bei einem Tipp aufgerufen wird, z. B. image.reload."
+    "button_action": "Knopf-Aktion",
+    "button_action_hint": "Ein Skript oder eine Automation, eingegeben als script.<name> oder automation.<name>, oder ein Service wie image.reload, der auf diese Kamera wirkt. Solange das Feld leer ist, bleibt der Knopf ausgeblendet."
   }
 }
