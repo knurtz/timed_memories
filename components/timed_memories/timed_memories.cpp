@@ -91,69 +91,95 @@ static std::string caption(const tessera::Plugin *plugin, int months, int days) 
   return text;
 }
 
+// The icon the button shows, by the Material Design Icons name the person types in "Button icon". Only the names
+// the screen's icon font carries resolve to a glyph (codepoints from the same set the built-in icons draw from); a
+// name it has not, or no name at all, gives 0 and the button falls back to its default (skip-next, 0xF04AD).
+static uint32_t button_icon(const char *raw) {
+  if (!raw) return 0;
+  const char *s = raw;
+  if (!std::strncmp(s, "mdi:", 4)) s += 4;  // "mdi:play" is "play"
+  char name[32] = "";
+  size_t n = 0;
+  for (; *s && n < sizeof(name) - 1; ++s) {
+    const char c = *s;
+    name[n++] = (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c;
+  }
+  name[n] = 0;
+  struct Entry { const char *name; uint32_t codepoint; };
+  static const Entry map[] = {
+      {"skip-next", 0xF04AD}, {"skip-previous", 0xF04AE}, {"play", 0xF040A}, {"pause", 0xF03E4},
+      {"stop", 0xF04DB}, {"play-pause", 0xF040E}, {"shuffle-variant", 0xF049F}, {"repeat", 0xF0456},
+      {"repeat-once", 0xF0458}, {"restart", 0xF0709}, {"refresh-auto", 0xF18F2}, {"arrow-left", 0xF004D},
+      {"arrow-right", 0xF0054}, {"chevron-left", 0xF0141}, {"chevron-right", 0xF0142}, {"home", 0xF02DC},
+      {"heart", 0xF02D1}, {"cctv", 0xF07AE}, {"gesture-tap-button", 0xF12A8}, {"plus", 0xF0415},
+      {"album", 0xF0025}, {"music-note", 0xF0387}, {"record-player", 0xF099A}, {"play-speed", 0xF08FF}};
+  for (const auto &e : map)
+    if (std::strcmp(name, e.name) == 0) return e.codepoint;
+  return 0;
+}
+
 class SnapSaver : public tessera::Saver {
  public:
   explicit SnapSaver(const tessera::Plugin *plugin) : plugin_(plugin) {}
 
   void show(const tessera::SaverContext &c) override {
-    // Store options
+    width_ = c.width;
     height_ = c.height;
     std::snprintf(ref_date_, sizeof(ref_date_), "%s", c.options["reference_date"] | "2025-01-01");
     show_button_ = c.options["show_button"] | true;
     std::snprintf(button_action_, sizeof(button_action_), "%s", c.options["button_action"] | "");
+    std::snprintf(icon_, sizeof(icon_), "%s", c.options["button_icon"] | "");
 
-    // Full-screen picture
+    // The photo: the entity's own picture over the whole glass, made first so the caption and the button lie over it.
     if (ui::pictures()) {
       pic_ = ui::picture(c.parent);
       lv_obj_set_size(pic_, c.width, c.height);
       lv_obj_set_pos(pic_, 0, 0);
     }
 
-    // Caption label: bottom-left, small, with a semi-transparent shade behind it
-    shade_ = ui::block(c.parent, theme::CAMERA_PAGE);
-    lv_obj_set_style_bg_opa(shade_, LV_OPA_50, 0);
-    lv_obj_add_flag(shade_, LV_OBJ_FLAG_HIDDEN);
-    caption_ = ui::label(shade_, Font::BODY, theme::INK);
-    lv_obj_set_width(caption_, 1);
+    // The caption: the age of the subject, laid over the picture the way the music saver lays its words (no shade).
+    caption_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK_SOFT);
+    lv_obj_add_flag(caption_, LV_OBJ_FLAG_HIDDEN);
 
-    // The tap button: bottom-right, round, takes taps; only when an action is named.
-    if (show_button_ && button_action_[0]) make_button(c.parent, c.width, c.height);
+    // The button: a round key in the bottom right, shown whenever the person keeps it; its icon from the option.
+    if (show_button_) make_button(c.parent, c.width, c.height);
   }
 
   void on_state(JsonObjectConst data) override {
     // Store entity id for actions
     std::snprintf(entity_, sizeof(entity_), "%s", data["entity"] | "");
 
-    // Update picture
+    // The photo: the entity's own picture, whole glass, filling it (COVER), as the photos step shows its photo.
     auto attrs = data["attributes"];
-    if (attrs && attrs["entity_picture"] | "") {
-      if (pic_) ui::set_picture(pic_, attrs["entity_picture"], tessera::Fit::COVER);
-    }
+    const char *pic = attrs ? (attrs["entity_picture"] | "") : "";
+    if (pic_ && pic[0]) ui::set_picture(pic_, pic, tessera::Fit::COVER);
 
     // The caption: how long ago (or ahead) the photo was taken, from the reference date, in the screen's words.
+    // Laid at the bottom left, a margin from the edge, ending before the button, like the music saver's words.
+    if (!caption_) return;
     const std::string text = caption_text(attrs);
     if (text.empty()) {
-      lv_obj_add_flag(shade_, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(caption_, LV_OBJ_FLAG_HIDDEN);
       return;
     }
+    const int margin = ui::px(ui::large() ? 28 : 12);
+    const int line = ui::line_height(Font::BODY_LARGE);
+    int x = margin, w = width_ - 2 * margin;
+    if (btn_) {
+      const int key_left = width_ - margin - ui::px(ui::large() ? 64 : 40);
+      const int cap = key_left - margin / 2 - x;
+      if (cap < w) w = std::max(1, cap);
+    }
     ui::set_text(caption_, text);
-    // Size the shade to fit the text
-    int tw = ui::text_width(text, Font::BODY) + 2 * ui::mm(2);
-    int th = ui::line_height(Font::BODY) + 2 * ui::mm(1);
-    lv_obj_set_size(shade_, tw, th);
-    lv_obj_set_pos(shade_, ui::mm(6), height_ - th - ui::mm(6));
-    lv_obj_set_width(caption_, tw - 2 * ui::mm(2));
-    lv_obj_set_pos(caption_, ui::mm(2), ui::mm(1));
-    lv_obj_remove_flag(shade_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_width(caption_, w);
+    lv_obj_set_pos(caption_, x, height_ - margin - line);
+    lv_obj_remove_flag(caption_, LV_OBJ_FLAG_HIDDEN);
   }
 
+  // Only the button takes taps (ui::takes_taps), so a tap here is on it. A tap on the photo lets the finger through
+  // and wakes the screen, as the rest of a saver's glass does.
   void on_tap() override {
-    if (!btn_) return;
-    auto p = tessera::tap_point();
-    lv_area_t a;
-    lv_obj_get_coords(btn_, &a);
-    const int slack = ui::px(6);
-    if (p.x >= a.x1 - slack && p.x <= a.x2 + slack && p.y >= a.y1 - slack && p.y <= a.y2 + slack) tap_button();
+    if (btn_) tap_button();
   }
 
  private:
@@ -189,28 +215,35 @@ class SnapSaver : public tessera::Saver {
     return caption(plugin_, months, days);
   }
 
+  // The button: one round key the music saver stands in the bottom right, drawn as its side keys are (a white haze
+  // over the picture, a white sign, brighter under a finger). Its icon is the option's, or the default (skip-next)
+  // while it is empty or names an icon the font does not carry.
   void make_button(lv_obj_t *parent, int width, int height) {
-    const int key = ui::mm(12);
-    btn_ = ui::block(parent, theme::RAISED);
+    const int margin = ui::px(ui::large() ? 28 : 12);
+    const int key = ui::px(ui::large() ? 64 : 40);
+    btn_ = ui::block(parent, theme::CAMERA_INK);
     lv_obj_set_style_radius(btn_, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(btn_, 56, 0);
+    lv_obj_set_style_bg_opa(btn_, 110, LV_STATE_PRESSED);
     lv_obj_set_size(btn_, key, key);
-    lv_obj_set_pos(btn_, width - key - ui::mm(6), height - key - ui::mm(6));
-    // Icon: a simple refresh/shuffle symbol from Tessera's set
-    lv_obj_t *icon = ui::label(btn_, Font::ICON, theme::INK);
+    lv_obj_set_pos(btn_, width - margin - key, height - margin - key);
+    lv_obj_t *icon = ui::label(btn_, Font::ICON, theme::CAMERA_INK);
     lv_obj_set_width(icon, key);
     lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_pos(icon, 0, (key - ui::line_height(Font::ICON)) / 2);
-    ui::set_text(icon, ui::icon(0xF021B));  // refresh icon
+    const uint32_t codepoint = button_icon(icon_);
+    ui::set_text(icon, ui::icon(codepoint ? codepoint : 0xF04AD));
     ui::takes_taps(btn_);
   }
 
   const tessera::Plugin *plugin_;
-  int height_ = 0;
+  int width_ = 0, height_ = 0;
   bool show_button_ = true;
   char ref_date_[32] = "2025-01-01";
   char button_action_[64] = "";
+  char icon_[32] = "";
   char entity_[128] = "";
-  lv_obj_t *pic_{}, *caption_{}, *shade_{}, *btn_{};
+  lv_obj_t *pic_{}, *caption_{}, *btn_{};
 };
 
 void TimedMemories::setup() {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- The photo again fills the whole screen, the way the photo screensaver does: on a board with pictures the snapshot
+  stands behind the caption and the button.
+- The caption and the button now look like the built-in music screensaver. The caption is laid over the photo at the
+  bottom left, with no dark panel behind it. The button is the round key in the bottom right corner: a soft white
+  circle with a white sign, brighter under a finger.
+- A new "Button icon" option takes a Material Design Icons name (such as `skip-next`, `play`, `shuffle-variant` or
+  `heart`). While it is empty or names an icon the screen cannot draw, a default (`skip-next`) stands in for it. The
+  button now shows whenever "Show button" is on, even while no action is set.
+
 ## 0.2.0
 
 - The caption now counts whole months and days exactly (the old calculation went wrong near the end of a month)

@@ -17,6 +17,8 @@
     "show_button": "Show button",
     "show_button_hint": "A round button in the corner that triggers an action without waking the screen.",
     "button_action": "Button action",
-    "button_action_hint": "A script or automation to run, typed as script.<name> or automation.<name>, or a service for this camera as domain.action, e.g. image.reload. The button stays out while it is empty."
+    "button_action_hint": "A script or automation to run, typed as script.<name> or automation.<name>, or a service for this camera as domain.action, e.g. image.reload. The button stays out while it is empty.",
+    "button_icon": "Button icon",
+    "button_icon_hint": "A Material Design Icons name for the button, such as skip-next, play, pause, shuffle-variant or heart. While it is empty or names an icon the screen cannot draw, a default (skip-next) stands in."
   }
 }

@@ -17,6 +17,8 @@
     "show_button": "Toon knop",
     "show_button_hint": "Een ronde knop in de hoek die een actie uitvoert zonder het scherm te wekken.",
     "button_action": "Knop actie",
-    "button_action_hint": "Een script of automation om te starten, ingevoerd als script.<name> of automation.<name>, of een service voor deze camera, bijv. image.reload. Zolang het veld leeg is, blijft de knop verborgen."
+    "button_action_hint": "Een script of automation om te starten, ingevoerd als script.<name> of automation.<name>, of een service voor deze camera, bijv. image.reload. Zolang het veld leeg is, blijft de knop verborgen.",
+    "button_icon": "Knop-icoon",
+    "button_icon_hint": "Een Material Design Icons-naam voor de knop, zoals skip-next, play, pause, shuffle-variant of heart. Zolang het veld leeg is of een icoon noemt dat het scherm niet kan tekenen, staat daar een standaard (skip-next)."
   }
 }

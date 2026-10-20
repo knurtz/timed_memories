@@ -17,6 +17,8 @@
     "show_button": "Knopf anzeigen",
     "show_button_hint": "Ein runder Knopf in der Ecke, der eine Aktion auslöst, ohne den Bildschirm zu wecken.",
     "button_action": "Knopf-Aktion",
-    "button_action_hint": "Ein Skript oder eine Automation, eingegeben als script.<name> oder automation.<name>, oder ein Service wie image.reload, der auf diese Kamera wirkt. Solange das Feld leer ist, bleibt der Knopf ausgeblendet."
+    "button_action_hint": "Ein Skript oder eine Automation, eingegeben als script.<name> oder automation.<name>, oder ein Service wie image.reload, der auf diese Kamera wirkt. Solange das Feld leer ist, bleibt der Knopf ausgeblendet.",
+    "button_icon": "Knopf-Icon",
+    "button_icon_hint": "Ein Material-Design-Icons-Name für den Knopf, wie skip-next, play, pause, shuffle-variant oder heart. Solange das Feld leer ist oder ein Icon benennt, das das Zeichen nicht hat, steht das Standard-Icon (skip-next) da."
   }
 }

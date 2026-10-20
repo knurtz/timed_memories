@@ -2,7 +2,7 @@
 # snapshot full-screen with a caption computed from its taken_at attribute relative to a reference date.
 # One optional tap button for an action (e.g. shuffle to next image).
 id: timed_memories
-version: 0.2.0
+version: 0.3.0
 api: "0.14"
 icon: camera
 maintainer: Knurtz
@@ -46,4 +46,9 @@ savers:
         kind: text
         label: button_action
         hint: button_action_hint
+        default: ""
+      - id: button_icon
+        kind: text
+        label: button_icon
+        hint: button_icon_hint
         default: ""
