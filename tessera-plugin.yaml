@@ -1,8 +1,8 @@
 # Timed Memories: a screensaver step of its own (plugin API 0.14). Shows a camera or image entity's
-# snapshot full-screen with a caption computed from its taken_at attribute relative to a reference date.
-# One optional tap button for an action (e.g. shuffle to next image).
+# snapshot full-screen with a caption computed from its taken_at attribute relative to a birthday.
+# A tap button optionally runs a script or automation while standby stays on.
 id: timed_memories
-version: 0.3.0
+version: 0.3.2
 api: "0.14"
 icon: camera
 maintainer: Knurtz
@@ -18,7 +18,6 @@ permissions:
   home_assistant_actions:
     - script.turn_on
     - automation.trigger
-    - image.reload
 
 savers:
   - id: snap
@@ -29,7 +28,7 @@ savers:
     pictures: 1
     taps: true
     domains: [image, camera]
-    attributes: [entity_picture, taken_at]
+    attributes: [entity_picture, taken_at, date_taken, created_at, date, date_created]
     when: always
     example: saver_example
     options:
@@ -37,11 +36,6 @@ savers:
         kind: text
         label: reference_date
         hint: reference_date_hint
-      - id: show_button
-        kind: toggle
-        label: show_button
-        hint: show_button_hint
-        default: true
       - id: button_action
         kind: text
         label: button_action

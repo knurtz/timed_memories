@@ -1,4 +1,6 @@
 #include "timed_memories.h"
+#include "esphome/components/smart_display/tile_icon.h"
+#include "esphome/components/smart_display/tile_icon_names.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -16,16 +18,22 @@ struct DateParts {
   int year = 0, month = 0, day = 0, hour = 0, minute = 0;
 };
 
+static int days_in_month(int y, int m);
+
 static bool parse_date(const char *s, DateParts &d) {
   if (!s || !*s) return false;
   int y, m, dd, h = 0, mi = 0;
   if (sscanf(s, "%d-%d-%d %d:%d", &y, &m, &dd, &h, &mi) >= 3) {
-    d.year = y; d.month = m; d.day = dd; d.hour = h; d.minute = mi;
-    return true;
+    if (y > 0 && m >= 1 && m <= 12 && dd >= 1 && dd <= days_in_month(y, m)) {
+      d.year = y; d.month = m; d.day = dd; d.hour = h; d.minute = mi;
+      return true;
+    }
   }
   if (sscanf(s, "%d/%d/%d %d:%d", &y, &m, &dd, &h, &mi) >= 3) {
-    d.year = y; d.month = m; d.day = dd; d.hour = h; d.minute = mi;
-    return true;
+    if (y > 0 && m >= 1 && m <= 12 && dd >= 1 && dd <= days_in_month(y, m)) {
+      d.year = y; d.month = m; d.day = dd; d.hour = h; d.minute = mi;
+      return true;
+    }
   }
   return false;
 }
@@ -95,27 +103,33 @@ static std::string caption(const tessera::Plugin *plugin, int months, int days) 
 // the screen's icon font carries resolve to a glyph (codepoints from the same set the built-in icons draw from); a
 // name it has not, or no name at all, gives 0 and the button falls back to its default (skip-next, 0xF04AD).
 static uint32_t button_icon(const char *raw) {
-  if (!raw) return 0;
-  const char *s = raw;
-  if (!std::strncmp(s, "mdi:", 4)) s += 4;  // "mdi:play" is "play"
-  char name[32] = "";
-  size_t n = 0;
-  for (; *s && n < sizeof(name) - 1; ++s) {
-    const char c = *s;
-    name[n++] = (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c;
+  std::string name = raw ? raw : "";
+  const auto first = std::find_if_not(name.begin(), name.end(), [](unsigned char c) { return std::isspace(c); });
+  const auto last = std::find_if_not(name.rbegin(), name.rend(), [](unsigned char c) { return std::isspace(c); }).base();
+  name = first < last ? std::string(first, last) : std::string();
+  std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  if (name.rfind("mdi:", 0) == 0) name.erase(0, 4);
+  if (const uint32_t codepoint = tile_icon::named(name)) return codepoint;
+  const uint32_t codepoint = tile_icon::codepoint(name);
+  return tile_icon::carried(codepoint) ? codepoint : 0;
+}
+
+// The add-on turns attributes ending in _at or _date into local epoch seconds. Other integrations may send a date
+// string instead, so accept both forms and the common names that describe when a photo was made.
+static bool picture_date(JsonObjectConst attrs, DateParts &date) {
+  if (!attrs) return false;
+  static constexpr const char *names[] = {"taken_at", "date_taken", "created_at", "date", "date_created"};
+  for (const char *name : names) {
+    const JsonVariantConst value = attrs[name];
+    const uint32_t epoch = value | 0u;
+    if (epoch) {
+      const auto t = tessera::local_time(epoch);
+      date = {t.year, t.month, t.day, t.hour, t.minute};
+      return true;
+    }
+    if (parse_date(value | "", date)) return true;
   }
-  name[n] = 0;
-  struct Entry { const char *name; uint32_t codepoint; };
-  static const Entry map[] = {
-      {"skip-next", 0xF04AD}, {"skip-previous", 0xF04AE}, {"play", 0xF040A}, {"pause", 0xF03E4},
-      {"stop", 0xF04DB}, {"play-pause", 0xF040E}, {"shuffle-variant", 0xF049F}, {"repeat", 0xF0456},
-      {"repeat-once", 0xF0458}, {"restart", 0xF0709}, {"refresh-auto", 0xF18F2}, {"arrow-left", 0xF004D},
-      {"arrow-right", 0xF0054}, {"chevron-left", 0xF0141}, {"chevron-right", 0xF0142}, {"home", 0xF02DC},
-      {"heart", 0xF02D1}, {"cctv", 0xF07AE}, {"gesture-tap-button", 0xF12A8}, {"plus", 0xF0415},
-      {"album", 0xF0025}, {"music-note", 0xF0387}, {"record-player", 0xF099A}, {"play-speed", 0xF08FF}};
-  for (const auto &e : map)
-    if (std::strcmp(name, e.name) == 0) return e.codepoint;
-  return 0;
+  return false;
 }
 
 class SnapSaver : public tessera::Saver {
@@ -126,7 +140,6 @@ class SnapSaver : public tessera::Saver {
     width_ = c.width;
     height_ = c.height;
     std::snprintf(ref_date_, sizeof(ref_date_), "%s", c.options["reference_date"] | "2025-01-01");
-    show_button_ = c.options["show_button"] | true;
     std::snprintf(button_action_, sizeof(button_action_), "%s", c.options["button_action"] | "");
     std::snprintf(icon_, sizeof(icon_), "%s", c.options["button_icon"] | "");
 
@@ -135,24 +148,34 @@ class SnapSaver : public tessera::Saver {
       pic_ = ui::picture(c.parent);
       lv_obj_set_size(pic_, c.width, c.height);
       lv_obj_set_pos(pic_, 0, 0);
+      lv_obj_set_style_radius(pic_, 0, 0);
     }
 
     // The caption: the age of the subject, laid over the picture the way the music saver lays its words (no shade).
     caption_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK_SOFT);
     lv_obj_add_flag(caption_, LV_OBJ_FLAG_HIDDEN);
 
-    // The button: a round key in the bottom right, shown whenever the person keeps it; its icon from the option.
-    if (show_button_) make_button(c.parent, c.width, c.height);
+    // A local diagnostic is possible when the entity did not give the app a picture address. Fetch, size and decode
+    // failures happen in the add-on after this saver has asked for the picture; plugin API 0.14 has no callback for
+    // those failures, so do not claim a particular cause here.
+    problem_ = ui::label(c.parent, Font::BODY_LARGE, theme::INK_SOFT);
+    lv_obj_add_flag(problem_, LV_OBJ_FLAG_HIDDEN);
+
+    // The button only exists when it can run an action; otherwise every tap outside the photo wakes the screen.
+    if (button_action_[0]) make_button(c.parent, c.width, c.height);
   }
 
   void on_state(JsonObjectConst data) override {
-    // Store entity id for actions
-    std::snprintf(entity_, sizeof(entity_), "%s", data["entity"] | "");
-
     // The photo: the entity's own picture, whole glass, filling it (COVER), as the photos step shows its photo.
     auto attrs = data["attributes"];
     const char *pic = attrs ? (attrs["entity_picture"] | "") : "";
-    if (pic_ && pic[0]) ui::set_picture(pic_, pic, tessera::Fit::COVER);
+    if (pic_) ui::set_picture(pic_, pic, tessera::Fit::COVER);
+    if (!pic || !pic[0]) {
+      show_problem(plugin_->text("no_picture"));
+      if (caption_) lv_obj_add_flag(caption_, LV_OBJ_FLAG_HIDDEN);
+      return;
+    }
+    if (problem_) lv_obj_add_flag(problem_, LV_OBJ_FLAG_HIDDEN);
 
     // The caption: how long ago (or ahead) the photo was taken, from the reference date, in the screen's words.
     // Laid at the bottom left, a margin from the edge, ending before the button, like the music saver's words.
@@ -183,31 +206,37 @@ class SnapSaver : public tessera::Saver {
   }
 
  private:
-  // What the button runs: a script or an automation by its entity id (the service that goes with the domain), or,
-  // without one, a service as domain.action (such as image.reload) on the saver's own entity.
+  // What the button runs: a script or automation by its entity id. The manifest declares both services so Tessera
+  // can show a person what the plugin may do before it is installed.
   void tap_button() {
     if (strncmp(button_action_, "script.", 7) == 0) {
       tessera::action("script.turn_on", button_action_);
     } else if (strncmp(button_action_, "automation.", 11) == 0) {
       tessera::action("automation.trigger", button_action_);
-    } else if (strchr(button_action_, '.')) {
-      if (entity_[0]) tessera::action(button_action_, entity_);
     }
+  }
+
+  void show_problem(const char *text) {
+    if (!problem_ || !text || !text[0]) return;
+    const int margin = ui::px(ui::large() ? 28 : 12);
+    ui::set_text(problem_, text);
+    lv_obj_set_width(problem_, std::max(1, width_ - 2 * margin));
+    lv_obj_set_style_text_align(problem_, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(problem_, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_remove_flag(problem_, LV_OBJ_FLAG_HIDDEN);
   }
 
   // The caption to show, "" for none. The screen's own word while the photo has no taken moment, whose
   // value of the attribute (a moment) comes as seconds since 1970.
   std::string caption_text(JsonObjectConst attrs) {
-    long taken_epoch = attrs ? (long) (attrs["taken_at"] | 0) : 0;
     DateParts ref;
     if (!parse_date(ref_date_, ref)) return "";
-    if (!(taken_epoch > 0)) {
+    DateParts taken;
+    if (!picture_date(attrs, taken)) {
       // A photo without a moment: the screen's word for it.
       const char *word = plugin_->text("no_date");
       return word && word[0] ? std::string(word) : std::string();
     }
-    auto t = tessera::local_time((uint32_t) taken_epoch);
-    DateParts taken{t.year, t.month, t.day, t.hour, t.minute};
     int months = 0, days = 0;
     // The age, from the reference date to the photo, in whichever direction a wrong setting stands.
     if (serial(ref) <= serial(taken)) date_diff(ref, taken, months, days);
@@ -238,12 +267,10 @@ class SnapSaver : public tessera::Saver {
 
   const tessera::Plugin *plugin_;
   int width_ = 0, height_ = 0;
-  bool show_button_ = true;
   char ref_date_[32] = "2025-01-01";
   char button_action_[64] = "";
   char icon_[32] = "";
-  char entity_[128] = "";
-  lv_obj_t *pic_{}, *caption_{}, *btn_{};
+  lv_obj_t *pic_{}, *caption_{}, *problem_{}, *btn_{};
 };
 
 void TimedMemories::setup() {

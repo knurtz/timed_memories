@@ -2,6 +2,7 @@
   "_meta": { "name": "Deutsch" },
   "screen": {
     "no_date": "Kein Aufnahmedatum",
+    "no_picture": "Keine Bildadresse",
     "month_day": "1 Monat, 1 Tag",
     "month_days": "1 Monat, {days} Tage",
     "months_day": "{months} Monate, 1 Tag",
@@ -12,13 +13,11 @@
     "summary": "Zeigt eine Kamera- oder Bildentität in Vollbild mit ihrem Alter als Untertitel: die Monate und Tage von einem Referenzdatum bis zum Aufnahmetag.",
     "saver_name": "Timed Memories",
     "saver_example": "5 Monate, 3 Tage",
-    "reference_date": "Referenzdatum",
-    "reference_date_hint": "Das Datum, von dem aus das Alter gezählt wird, als Jahr-Monat-Tag, z. B. 2025-06-15. Ein Geburtstag funktioniert gut: Der Untertitel liest sich dann, wie alt die Person auf dem Foto ist.",
-    "show_button": "Knopf anzeigen",
-    "show_button_hint": "Ein runder Knopf in der Ecke, der eine Aktion auslöst, ohne den Bildschirm zu wecken.",
+    "reference_date": "Geburtstag",
+    "reference_date_hint": "Der Geburtstag, aus dem das Alter berechnet wird, als Jahr-Monat-Tag, z. B. 2025-06-15.",
     "button_action": "Knopf-Aktion",
-    "button_action_hint": "Ein Skript oder eine Automation, eingegeben als script.<name> oder automation.<name>, oder ein Service wie image.reload, der auf diese Kamera wirkt. Solange das Feld leer ist, bleibt der Knopf ausgeblendet.",
+    "button_action_hint": "Ein Skript oder eine Automation, eingegeben als script.<name> oder automation.<name>. Bleibt das Feld leer, ist der Knopf ausgeblendet.",
     "button_icon": "Knopf-Icon",
-    "button_icon_hint": "Ein Material-Design-Icons-Name für den Knopf, wie skip-next, play, pause, shuffle-variant oder heart. Solange das Feld leer ist oder ein Icon benennt, das das Zeichen nicht hat, steht das Standard-Icon (skip-next) da."
+    "button_icon_hint": "Jeder in Tessera vorhandene Material-Design-Icons-Name, mit oder ohne mdi:, oder ein unterstützter fünfstelliger hexadezimaler Codepoint. Solange das Feld leer ist oder ein nicht vorhandenes Icon benennt, steht das Standard-Icon (skip-next) da."
   }
 }

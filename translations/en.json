@@ -2,6 +2,7 @@
   "_meta": { "name": "English" },
   "screen": {
     "no_date": "No taken date",
+    "no_picture": "No image address",
     "month_day": "1 month, 1 day",
     "month_days": "1 month, {days} days",
     "months_day": "{months} months, 1 day",
@@ -12,13 +13,11 @@
     "summary": "Shows a photo full-screen with its age as a caption: the months and days from a reference date to the day it was taken.",
     "saver_name": "Timed Memories",
     "saver_example": "5 months, 3 days",
-    "reference_date": "Reference date",
-    "reference_date_hint": "The date the age is counted from, as year-month-day, e.g. 2025-06-15. A birthday works well: the caption then reads how old the subject is in the photo.",
-    "show_button": "Show button",
-    "show_button_hint": "A round button in the corner that triggers an action without waking the screen.",
+    "reference_date": "Birthday",
+    "reference_date_hint": "The birthday used to calculate the subject's age, as year-month-day, e.g. 2025-06-15.",
     "button_action": "Button action",
-    "button_action_hint": "A script or automation to run, typed as script.<name> or automation.<name>, or a service for this camera as domain.action, e.g. image.reload. The button stays out while it is empty.",
+    "button_action_hint": "A script or automation to run, typed as script.<name> or automation.<name>. Leave empty to hide the button.",
     "button_icon": "Button icon",
-    "button_icon_hint": "A Material Design Icons name for the button, such as skip-next, play, pause, shuffle-variant or heart. While it is empty or names an icon the screen cannot draw, a default (skip-next) stands in."
+    "button_icon_hint": "Any Material Design Icons name Tessera has installed, written with or without mdi:, or a supported five-digit hexadecimal codepoint. While it is empty or names an unavailable icon, a default (skip-next) stands in."
   }
 }

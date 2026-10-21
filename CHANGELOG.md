@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.2
+
+- Target Immich Picture camera entities: retain their capture date and use their thumbnail as the full-screen image.
+- Make the image place square, clear it when the entity has no picture, and accept the common capture-date attributes as
+  either an epoch or an ISO-like date string.
+- Resolve button icons from Tessera's complete installed icon set, with or without `mdi:` or as a supported five-digit
+  hexadecimal codepoint.
+- Keep only the birthday, button action, and button icon options; a button appears only for a configured script or automation.
+- Show an on-screen diagnostic when Home Assistant supplies no image address.
+
 ## 0.3.0
 
 - The photo again fills the whole screen, the way the photo screensaver does: on a board with pictures the snapshot

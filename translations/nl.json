@@ -2,6 +2,7 @@
   "_meta": { "name": "Nederlands" },
   "screen": {
     "no_date": "Geen tijdstip",
+    "no_picture": "Geen afbeeldingsadres",
     "month_day": "1 maand, 1 dag",
     "month_days": "1 maand, {days} dagen",
     "months_day": "{months} maanden, 1 dag",
@@ -12,13 +13,11 @@
     "summary": "Toont een camera- of afbeeldingse entity in volledig scherm met haar leeftijd als bijschrift: de maanden en dagen van een referentiedatum tot de dag waarop de foto is genomen.",
     "saver_name": "Timed Memories",
     "saver_example": "5 maanden, 3 dagen",
-    "reference_date": "Referentiedatum",
-    "reference_date_hint": "De datum waar de leeftijd vanaf wordt geteld, als jaar-maand-dag, bijv. 2025-06-15. Een geboortedatum werkt goed: het bijschrift geeft dan hoe oud het onderwerp op de foto is.",
-    "show_button": "Toon knop",
-    "show_button_hint": "Een ronde knop in de hoek die een actie uitvoert zonder het scherm te wekken.",
+    "reference_date": "Geboortedatum",
+    "reference_date_hint": "De geboortedatum waarmee de leeftijd wordt berekend, als jaar-maand-dag, bijv. 2025-06-15.",
     "button_action": "Knop actie",
-    "button_action_hint": "Een script of automation om te starten, ingevoerd als script.<name> of automation.<name>, of een service voor deze camera, bijv. image.reload. Zolang het veld leeg is, blijft de knop verborgen.",
+    "button_action_hint": "Een script of automation om te starten, ingevoerd als script.<name> of automation.<name>. Laat het veld leeg om de knop te verbergen.",
     "button_icon": "Knop-icoon",
-    "button_icon_hint": "Een Material Design Icons-naam voor de knop, zoals skip-next, play, pause, shuffle-variant of heart. Zolang het veld leeg is of een icoon noemt dat het scherm niet kan tekenen, staat daar een standaard (skip-next)."
+    "button_icon_hint": "Elke Material Design Icons-naam die Tessera heeft geïnstalleerd, met of zonder mdi:, of een ondersteunde vijfcijferige hexadecimale codepoint. Zolang het veld leeg is of een niet-beschikbaar icoon noemt, staat daar een standaard (skip-next)."
   }
 }
